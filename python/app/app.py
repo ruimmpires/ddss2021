@@ -422,11 +422,11 @@ def part2_correct():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         flash(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html")
     
     #sanitizacao
     mensagem=re.sub(r"[^a-zA-Z0-9!@?,. ]","",mensagem)
