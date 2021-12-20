@@ -150,10 +150,10 @@ def useradd():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html")
     
     #Query the DB to check if the name already exists
     sqlquery=("SELECT * FROM users WHERE username = '{}'").format(username)
@@ -231,7 +231,7 @@ def part1_vulnerable():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part1.html")
@@ -321,10 +321,10 @@ def part1_correct():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html")
     
     #Query the DB and fetch the salt of the user
     sqlquery=("SELECT * FROM users WHERE username = '{}'").format(username)
@@ -392,11 +392,10 @@ def part2_vulnerable():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        flash(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html")
     
     #escrita na BD
     sqlquery=("INSERT INTO messages (author,message) VALUES ('vulnerable','"+mensagem+"');COMMIT;")
@@ -518,11 +517,10 @@ def part3_vulnerable():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        flash(t_message)
-        return render_template("part3.html", message = t_message)
+        return render_template("part3.html")
     
     #construcao da query
     if search_input == '': #Search For vazio
@@ -661,8 +659,7 @@ def part3_correct():
     except conn.Error as e: #isto nao esta bem?
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        flash(t_message)
-        return render_template("part3.html", message = t_message)
+        return render_template("part3.html")
     
     #construcao da query
     if search_input == '': #Search For vazio
@@ -938,7 +935,7 @@ if __name__ == "__main__":
 
     #logger.info("\n---------------------\n\n")
 
-    app.run(host="0.0.0.0", debug=True, threaded=True)
+    app.run(host="0.0.0.0", debug=False, threaded=True)
 
 
 
