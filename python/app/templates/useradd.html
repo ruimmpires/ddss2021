@@ -1,28 +1,11 @@
 <!DOCTYPE html>
-<!--
 
-    =========================================
-    Design and Development of Secure Software
-    ============= MSI 2019/2020 =============
-    ======== Practical Assignment #2 ========
-    ================ Part #1 ================
-    =========================================
-
-      Department of Informatics Engineering
-              University of Coimbra          
-   
-    Prof. Marco Vieira <mvieira@dei.uc.pt>
-    Prof. Nuno Antunes <nmsa@dei.uc.pt>
-   
--->
 <html>
     <head>
         <title>DDSS PA2 - User creation</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!--
-            Creation of users
-        -->
+        
         <style>
             .messages {
               padding: 8px;
@@ -37,13 +20,52 @@
 
             <h1>Design and Development of Secure Software</h1>
             <h2>Practical Assignment #2</h2>
-            <div align="center">
+            <br>
+            <br>
+            <a href="\">Home</a> 
+            <br>
+            <br>
 
-                <form action="/useradd" method="post">
+            <div align="center">
+                <form action="/useradd_vulnerable">
                     <table  border="1" cellpadding="1" style="width: 350px; background-color:#f1f1f1">
                         <thead>
                             <tr>
-                                <th colspan="2"><b>Part extra - New user form</b></th>
+                                <th colspan="2"><b>Part extra - New user form - vulnerable</b></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><label>Username</label></td>
+                                <td><input type="nuser" placeholder="Enter Username" name="new_username" minlength="4" ></td>
+                            </tr>
+                            <tr>
+                                <td><label>Password</label> </td>
+                                <td><input type="password" placeholder="Enter Password" name="new_password" > </td>
+                            </tr>
+                            <tr>
+                                <td><label>Confirm password</label></td>
+                                <td><input type="password" placeholder="Confirm Password" name="confirmed_password" > </td>
+                            </tr>
+                            <tr>
+                                
+                            </tr>                                                      
+                            <td align="right" colspan="2"><button type="submit">Register</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </form> 
+               
+                {% if message_v %}
+                     <div class="messages">{{ message_v }}</div>
+                {% endif %}
+                <br>
+                <br>
+                <form action="/useradd_correct" method="post">
+                    <table  border="1" cellpadding="1" style="width: 350px; background-color:#f1f1f1">
+                        <thead>
+                            <tr>
+                                <th colspan="2"><b>Part extra - New user form - correct </b></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -60,21 +82,22 @@
                                 <td><input type="password" placeholder="Confirm Password" name="confirmed_password" required minlength="12" autocomplete="new-password" title="Must contain at least one  number and one uppercase and lowercase letter, one @, one !, and at least 12 characters"> </td>
                             </tr>
                             <tr>
+                                
+                            </tr>                                                      
+                            <tr>
+                                <td><label>Secure feature</label></td>
+                                <td>{{ recaptcha }} </td> 
+                                </tr>
+                            <tr>
                                 <td align="right" colspan="2"><button type="submit">Register</button></td>
                             </tr>
                         </tbody>
                     </table>
                 </form> 
-                {% for message in get_flashed_messages() %}
-                <div class="messages">{{ message }}</div>
-                {% endfor %}
-
-                <form action="/useradd" method="post">
-                    <!--{{ form.username }}-->
-                    {{ form.recaptcha }}
-                </form>
                 
-
+                {% if message_c %}
+                    <div class="messages">{{ message_c }}</div>
+                {% endif %}
             </div>
             
 

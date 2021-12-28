@@ -22,7 +22,8 @@ DROP TABLE IF EXISTS books;
 CREATE TABLE users (
     username    VARCHAR( 32)    primary key,
     password    VARCHAR(512)    NOT NULL,
-    salt        VARCHAR(512)    NOT NULL
+    salt        VARCHAR(512)    NOT NULL,
+    otp         VARCHAR(512)
 );
 
 
@@ -45,24 +46,29 @@ CREATE TABLE books (
     recomendation   INTEGER
 );
 
+
 -- Users
-insert into users (username, password, salt)
-            values ('msi', 'a7dffdc6c98127a504b4151aee8266c11b3b5d5d7f426137e0200f202a7e20aba86e101074bbd899bc45f6a9e103003df8f9d225000e543a9550b721cd2ab0cf', '8a993cb569724024817240444c316525');
+insert into users (username, password, salt, otp)
+          values ('bcrypt', '$2b$12$4C1YRf3r3zdD07KpPbZw0ue6DDG9EMWVkuk0P0rsGPuc6Vss9Kqnu', '$2b$12$4C1YRf3r3zdD07KpPbZw0u', 'none');
 
-insert into users (username, password, salt)
-          values ('teste', 'b123e9e19d217169b981a61188920f9d28638709a5132201684d792b9264271b7f09157ed4321b1c097f7a4abecfc0977d40a7ee599c845883bd1074ca23c4af', 'none');
+insert into users (username, password, salt, otp)
+          values ('teste', 'b123e9e19d217169b981a61188920f9d28638709a5132201684d792b9264271b7f09157ed4321b1c097f7a4abecfc0977d40a7ee599c845883bd1074ca23c4af', 'none', '');
 
-insert into users (username, password, salt)
-          values ('rpires', '63f5445032039f3fb36f145a8c9b69f8c1cd1dc5b85b687cafdacfdff595788b8b727a70b52b6fd3d35010fe5ef47581f139626385db075ca51035caf26c3fd4', 'c8d6c477dec244e6b5b7ece1395a2663');
+insert into users (username, password, salt, otp)
+          values ('rpires', '$2b$12$cnso5RSeALFJnoTYtGEAqutZUSwF2e87UkTCKuuPPb/BYxVBq0IzW', '$2b$12$cnso5RSeALFJnoTYtGEAqu', 'LMO24VLVLNLUHDSIOCPXZYZUWKQGCO6H');
 
-insert into users (username, password, salt)
-          values ('dominoro', 'f40df0801e0cbf086287c9f36c1299be4a9378622609b5e5ed54eccebfb5415b7cdaa0baa21264073ade4f7b8d1e99c41e769d2c3359ec5dc5a7edab809a567f', 'f60d28683aaf4467838c16a97252d092');
+insert into users (username, password, salt, otp)
+          values ('dominoro', 'f40df0801e0cbf086287c9f36c1299be4a9378622609b5e5ed54eccebfb5415b7cdaa0baa21264073ade4f7b8d1e99c41e769d2c3359ec5dc5a7edab809a567f', 'f60d28683aaf4467838c16a97252d092', 'none');
 
-insert into users (username, password, salt)
-          values ('bcrypt', '$2b$12$4C1YRf3r3zdD07KpPbZw0ue6DDG9EMWVkuk0P0rsGPuc6Vss9Kqnu', '$2b$12$4C1YRf3r3zdD07KpPbZw0u');
-insert into users (username, password, salt)
-          values ('bcrypt4', '\\x243262243132244d754f667a304c32413234457a75335176684c574d2e2e4b636f6f3364614a54672f59696d38696a4342797571464e773539366643', '\\x243262243132244d754f667a304c32413234457a75335176684c574d2e');
 
+insert into users (username, password, salt, otp)
+          values ('bcrypt4', '\\x243262243132244d754f667a304c32413234457a75335176684c574d2e2e4b636f6f3364614a54672f59696d38696a4342797571464e773539366643', '\\x243262243132244d754f667a304c32413234457a75335176684c574d2e', 'none');
+insert into users (username, password, salt, otp)
+          values ('Teste6', '$2b$12$qZiUKuTKldhyuSr6HLWiZuQV5MCZB7ctgzVHIUYISzWQ8f0AmKEzC', '$2b$12$qZiUKuTKldhyuSr6HLWiZu', '62JS2INMLQXUAACF4UREI3JWK7FSE3BF');
+insert into users (username, password, salt, otp)
+          values ('Teste5', '$2b$12$dh6ZgBYPREvWUfbp7zlScOjz47SeMYaoDVaLaLqaq24zq5ClXbXxC', '$2b$12$dh6ZgBYPREvWUfbp7zlScO', '5NC47TE5VNPWPIRBVXJCTKWFXOYCSSJ5');
+insert into users (username, password, salt, otp)
+          values ('ruipires', '$2b$12$cnso5RSeALFJnoTYtGEAqutZUSwF2e87UkTCKuuPPb/BYxVBq0IzW', '$2b$12$cnso5RSeALFJnoTYtGEAqu', 'LMO24VLVLNLUHDSIOCPXZYZUWKQGCO6H');
 
 -- Default data for messages
 insert into messages (author, message)
@@ -152,4 +158,7 @@ insert into books (title, authors, category, price, book_date, keywords, notes, 
                    description)
        values('Tio patinhas 10', 'Kelvin', 'HTML and Web design',  7.99, '2021-10-01 12:00:00', 'patos; scripts; zezinho', 'Livro de qudradinhos', 1, 
             'quadradinhos 10');
-
+insert into books (title, authors, category, price, book_date, keywords, notes, recomendation,
+                   description)
+       values('Tio patinhas 11', 'Luisa', 'Databases',  11.99, '2022-01-01 12:00:00', 'patos; scripts; maluquinho', 'Livro de qudradinhos', 1, 
+            'quadradinhos 11');

@@ -1,32 +1,9 @@
 <!DOCTYPE html>
-<!--
-
-    =========================================
-    Design and Development of Secure Software
-    ============= MSI 2019/2020 =============
-    ======== Practical Assignment #2 ========
-    ================ Part #1 ================
-    =========================================
-
-      Department of Informatics Engineering
-              University of Coimbra          
-   
-    Prof. Marco Vieira <mvieira@dei.uc.pt>
-    Prof. Nuno Antunes <nmsa@dei.uc.pt>
-   
--->
 <html>
     <head>
         <title>DDSS PA2 - Part 1.1</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!--
-            V2 info:
-            - corrected a few naming bugs in the inputs
-            - fixed a few syntax issues in the HTML
-            - added some explanations
-        -->
-
         <style>
             .messages {
               padding: 8px;
@@ -45,20 +22,17 @@
 
         <div align="center">
 
+        <div align="center">
+            
             <h1>Design and Development of Secure Software</h1>
-            <h2>Practical Assignment #2 - Part 1.1</h2>
-            <div align="center">
-                DISCLAIMER: This code is to be used in the scope of the <em>DDSS</em> course.
-                <b>Important:</b> these sources are merely suggestions of implementations. 
-                You should modify everything you deem as necessary and be responsible for all the content that is delivered.
-                <em>The contents of this repository do not replace the proper reading of the assignment description.</em>
-            </div>
-            <br>
+            <h2>Practical Assignment #2 - Part 1.1<br><br>Login Form</h2>
+ 
+            <a href="\">Home</a> <br /> 
             <br>
 
 
             <form action="/part1_vulnerable">
-                <table  border="1" cellpadding="1" style="width: 300px; background-color:#f1f1f1">
+                <table  border="1" cellpadding="1" style="width: 400px; background-color:#f1f1f1">
                     <thead>
                         <tr>
                             <th colspan="2"><b>Part 1.0 - Vulnerable Form</b></th>
@@ -83,16 +57,17 @@
                     </tbody>
                 </table>
             </form> 
+            
+            {% if message_v %}
+                <div class="messages">{{ message_v }}</div>
+            {% endif %}
 
-            {% for message in get_flashed_messages() %}
-                <div class="messages">{{ message }}</div>
-            {% endfor %}
 
             <br>
             <br>
 
             <form action="/part1_correct" method="post" >
-                <table  style="width: 300px ; background-color:#f19191" border="1" cellpadding="1">
+                <table  style="width: 400px ; background-color:#f19191" border="1" cellpadding="1">
                     <thead>
                         <tr>
                             <th colspan="2"><b>Part 1.1 - Correct Form</b></th>
@@ -101,14 +76,19 @@
                     <tbody>
                         <tr>
                             <td><label>Username</label></td>
-                            <td><input type="text" placeholder="Enter Username" name="c_username" required minlength="4" autocomplete="off" title="Must contain at least 4 or more characters"></td>
+                            <td><input type="text" pattern="[A-Za-z0-9]+" placeholder="Enter Username" name="c_username" required minlength="4" autocomplete="off" title="Must contain at least 4 or more characters"></td>
                         </tr>
                         <tr>
                             <td><label>Password</label> </td>
-                            <td><input type="password" placeholder="Enter Password" name="c_password" required minlength="12" autocomplete="off" title="Must contain at least one  number and one uppercase and lowercase letter, one @, one !, and at least 12 or more characters"> </td>
+                            <td><input type="password" pattern="[A-Za-z0-9!@]+" placeholder="Enter Password" name="c_password" required minlength="12" autocomplete="off" title="Must contain at least one  number and one uppercase and lowercase letter, one @, one !, and at least 12 or more characters"> </td>
+                        </tr>
+                        <tr>
+                            <td><label>One Time Password</label></td>
+                            <td><input  type="number" placeholder="Enter One Time Password from Google Authenticator" name="c_otp" required length="6" autocomplete="off" title="Must check the OTP on Google authenticator for this user on this APP"></td>
                         </tr>
                         <tr>
                             <td><label>Remember me</label></td>
+                            <input type='hidden' value='off' name='c_remember'>
                             <td><input  type="checkbox" checked="checked" name="c_remember"></td>
                         </tr>
                         <tr>
@@ -118,9 +98,10 @@
                     </tbody>
                 </table>
             </form> 
-            {% for message in get_flashed_messages() %}
-                <div class="messages">{{ message }}</div>
-            {% endfor %}
+            
+            {% if message_c %}
+                <div class="messages">{{ message_c }}</div>
+            {% endif %}
         </div>
 
         

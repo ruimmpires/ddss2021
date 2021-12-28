@@ -1,49 +1,24 @@
 <!DOCTYPE html>
-<!--
 
-    =========================================
-    Design and Development of Secure Software
-    ============= MSI 2019/2020 =============
-    ======== Practical Assignment #2 ========
-    ================ Part #1 ================
-    =========================================
-
-      Department of Informatics Engineering
-              University of Coimbra          
-   
-    Prof. Marco Vieira <mvieira@dei.uc.pt>
-    Prof. Nuno Antunes <nmsa@dei.uc.pt>
-   
--->
 <html>
     <head>
         <title>DDSS PA2 - Part 1.3</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!--
-        V2 info:
-            - corrected a few naming bugs in the inputs
-            - fixed a few syntax issues in the HTML
-            - added some explanations
-        -->
+        
     </head>
     <body>
         <div align="center">
 
             <h1>Design and Development of Secure Software</h1>
             <h2>Practical Assignment #2 - Part 1.3</h2>
-            <div align="center">
-                DISCLAIMER: This code is to be used in the scope of the <em>DDSS</em> course.
-                <b>Important:</b> these sources are merely suggestions of implementations. 
-                You should modify everything you deem as necessary and be responsible for all the content that is delivered.
-                <em>The contents of this repository do not replace the proper reading of the assignment description.</em>
-            </div>
+            
             <br>
-            <a href="\">logout user {{user}}</a> 
-            <!--<br>
-            <a href="approved.html">Main menu</a> -->
+            <a href="\part2.html"> Message Form </a> <br /> 
+            <a href="\">Logout user {{user}}</a> 
+            
             <br>
-
+            <br>
 
             <table>
 
@@ -84,11 +59,11 @@
                                     </tr>
                                     <tr>
                                         <td valign="middle">Price more than</td>
-                                        <td style="border-width: 1pt"><input type="text"  name="v_pricemin" maxlength="100" value="" size="10"></td>
+                                        <td style="border-width: 1pt"><input type="text"  name="v_pricemin" maxlength="100" value="0" size="10"></td>
                                     </tr>
                                     <tr>
                                         <td valign="middle">Price less than</td>
-                                        <td style="border-width: 1pt"><input type="text"  name="v_pricemax" maxlength="100" value="" size="10"></td>
+                                        <td style="border-width: 1pt"><input type="text"  name="v_pricemax" maxlength="100" value="1000" size="10"></td>
                                     </tr>
 
 
@@ -323,7 +298,7 @@
                     <td>    
                     </td>
                     <td>
-                        <form action="/part3_correct" method="post">
+                        <form action="/part3_correct" method="post" autocomplete="off">
                             <table border="1" cellpadding="1" style="font-size: 10pt; width: 400px; background-color:   #f19191">
                                 <thead>
                                     <tr>
@@ -356,11 +331,11 @@
                                     </tr>
                                     <tr>
                                         <td valign="middle">Price more than</td>
-                                        <td style="border-width: 1pt"><input type="number"  name="c_pricemin" maxlength="100" value="" size="10" min="0" max="1000"></td>
+                                        <td style="border-width: 1pt"><input type="number"  name="c_pricemin" maxlength="100" value="0" size="10" min="0" max="1000"></td>
                                     </tr>
                                     <tr>
                                         <td valign="middle">Price less than</td>
-                                        <td style="border-width: 1pt"><input type="number"  name="c_pricemax" maxlength="100" value="" size="10" min="0" max="1000"></td>
+                                        <td style="border-width: 1pt"><input type="number"  name="c_pricemax" maxlength="100" value="1000" size="10" min="0" max="1000"></td>
                                     </tr>
 
 
@@ -604,7 +579,9 @@
                 <td><b>Category</b></td>
                 <td><b>Price</b></td>
                 <td><b>Date</b></td>
-                <td><b>Description</b></td>
+                {% if not hidedescription %}
+                    <td><b>Description</b></td>
+                {% endif %}
                 <td><b>Keywords</b></td>
                 <td><b>Notes</b></td>
                 <td><b>Recomendations</b></td>
@@ -617,7 +594,9 @@
                 <td>{{livro.3}}</td>
                 <td>{{livro.4}}</td>
                 <td>{{livro.5}}</td>
-                <td>{{livro.6}}</td>
+                {% if not hidedescription %}
+                    <td>{{livro.6}}</td>
+                {% endif %}
                 <td>{{livro.7}}</td>
                 <td>{{livro.8}}</td>
                 <td>{{livro.9}}</td>

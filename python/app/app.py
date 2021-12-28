@@ -1,94 +1,66 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, g, request, redirect, url_for,  make_response, flash, session
-import logging, psycopg2
+from flask import Flask, render_template, g, request, redirect, url_for,  make_response, flash, session, Response, escape
+import logging, psycopg2, sys, io
 import hashlib, os, time
 from configparser import ConfigParser
 import time
 import pip
 import bcrypt
 from flask_wtf import form
-from flask_wtf import FlaskForm, RecaptchaField, Form
+from flask_wtf import FlaskForm, RecaptchaField,  Form
 from wtforms import StringField
+from flask_recaptcha import ReCaptcha
 import re
-#import regex
-#UsersStatus = []
-#test BOLT SCA
+import pyotp, pyqrcode, qrcode, base64
+import click, shutil
+from itsdangerous import URLSafeSerializer
+#from flask_wtf.csrf import CSRFProtect
+
+
+
+from datetime import datetime, timedelta
+app = Flask(__name__)
+#csrf = CSRFProtect(app)
+# The secret key is used to cryptographically-sign the cookies used for storing the session data.
+#Random secret key
+app.config['SECRET_KEY']=os.urandom(24)
+app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=10)
+
+app.config["OTP_ENABLED"] = "False"
+
+global COOKIE_TIME_OUT
+COOKIE_TIME_OUT = 60*5 #5 minutes
+
+#chaves para recaptcha
+app.config['RECAPTCHA_USE_SSL'] = False
+app.config['RECAPTCHA_SITE_KEY'] = '6LfWQrgdAAAAAI32HGal7CDZwdqCr0nx7sDjJJv-' # <-- Add your site key
+app.config['RECAPTCHA_SECRET_KEY'] = '6LfWQrgdAAAAAHS3MRJbLA0mtMQ7wewElzOHfd9h' # <-- Add your secret key
+recaptcha = ReCaptcha(app) # Create a ReCaptcha object by passing in 'app' as parameter
 class SignupForm(FlaskForm):
     username = StringField('Username')
     recaptcha = RecaptchaField()
 
-
-from datetime import timedelta
-app = Flask(__name__)
-# The secret key is used to cryptographically-sign the cookies used for storing the session data.
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
-app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=10)
-
-global COOKIE_TIME_OUT
-#COOKIE_TIME_OUT = 60*60*24*7 #7 days
-COOKIE_TIME_OUT = 60*5 #5 minutes
-
-#from flask.ext.login import current_user
-
-#import flask_login
-#from flask_login import current_user, login_user, login_required, logout_user, LoginManager, UserMixin
-
-
-#chaves para recaptcha
-#falta definir as chaves certas para que funcione correctamente
-#https://flask-wtf.readthedocs.io/en/latest/form/#recaptcha
-#https://stackoverflow.com/questions/3232904/using-recaptcha-on-localhost
-#Localhost domains are no longer supported by default. 
-# If you wish to continue supporting them for development you can add them to the list of supported domains for your
-# site key. Go to the admin console to update your list of supported domains. 
-# We advise to use a separate key for development and production and to not allow localhost on your production site 
-# key. Just add localhost to your list of domains for your site and you'll be good.
-app.config['RECAPTCHA_USE_SSL'] = False
-app.config['RECAPTCHA_PUBLIC_KEY'] = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
-app.config['RECAPTCHA_PRIVATE_KEY'] = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'
-app.config['RECAPTCHA_OPTIONS'] = {'theme': 'white'}
-
-
-
-#users = []
-
-'''
-def init_app(app):
-    login_manager = LoginManager()
-    login_manager.init_app(app) # Enable Login
-    login_manager.login_view = "login" # Enable redirects if unauthorized
-
-    @login_manager.user_loader
-    def load_user(id):
-        return User.query.get(id)
-
-
+#Before Requests for Session
 @app.before_request
 def before_request():
-    #g.user = current_user  # PROBLEMA AQUI!
     g.user = None
-'''
+    if 'user_id' in session:
+        g.user = session['user_id']
 
-'''
-# User class
-class User(UserMixin, db.Model):
-    """Wraps User object for Flask-Login"""
-    def __init__(self, user):
-        self._user = user
+#Logout
+def logout():
+    logger.info("logout user")
+    #logger.info("delete cookie not yet working")
+    #Response.set_cookie('csrf_token','',expires=0)
+    #Response.delete_cookie('user_id')
+    #resp = make_response(render_template(...))
+    #resp.set_cookie('user_id', expires = 0)
+    logger.info("session pop")
+    session.pop('user_id', None)
+    logger.info(session)
+    return render_template("index.html")
 
-    def get_id(self):
-        return unicode(self._user.id)
-
-    def is_active(self):
-        return self._user.enabled
-
-    def is_anonymous(self):
-        return False
-
-    def is_authenticated(self):
-        return True
-'''
 
 
 @app.route("/")
@@ -96,23 +68,76 @@ def home():
     logger.info("user session pop out")
     session.pop('user_id', None)
     logger.info(session)
+    
     #logout_user()
-    return render_template("index.html");
+    #logger.info(export_db())
+    return render_template("index.html")
 
 
 @app.route("/useradd.html", methods=['GET'])
 def useraddhtml():
+    
     form = SignupForm()
-    logger.info("user session pop out")
-    session.pop('user_id', None)
-    logger.info(session)
-    #logout_user()
+    logout()
     return render_template("/useradd.html",form = form)
 
-
-@app.route("/useradd", methods=['POST'])
-def useradd():
+@app.route("/useradd_vulnerable", methods=['GET', 'POST'])
+def useradd_vulnerable():
     form = SignupForm()
+    if request.method == 'GET':
+        password = request.args.get('new_password') 
+        username = request.args.get('new_username') 
+        cpassword = request.args.get('confirmed_password') 
+    else:
+        password = request.form['new_password']
+        username = request.form['new_username']
+        cpassword = request.form['confirmed_password']
+    
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+    except conn.Error as e: 
+        t_message = "Database error: " + e + "/n SQL: "
+        logger.info(t_message)
+        return render_template("part1.html")
+    
+    #Query the DB to check if the name already exists
+    sqlquery=("SELECT * FROM users WHERE username = '"+username+"'")
+    logger.info(sqlquery)
+    cur.execute(sqlquery)
+    array_row = cur.fetchone() #fetchall seria mais arriscado
+    # array_row[0] is the username, array_row[1] is the h_password, array_row[2] is the salt
+    logger.info(array_row) #just for logging the output of the query
+    if array_row is not None:
+        # User exists
+        t_message = "Existing user, " + username + ", please define a new username!"
+        
+        logger.info(t_message)
+        conn.close ()
+        return render_template("useradd.html",message_v=t_message,form = form)
+    else:
+        if password == cpassword:
+            salt = bcrypt.gensalt()
+            h_password = bcrypt.hashpw(password.encode('utf-8'),salt)   
+            sqlquery=("INSERT INTO users (username,password,salt,otp) VALUES ('"+username+"', '"+h_password.decode('utf-8')+"', '"+salt.decode('utf-8')+"','none')")
+            logger.info(sqlquery)
+            cur.execute(sqlquery)
+            conn.commit ()
+            conn.close ()
+            t_message = "User "+username+" added with success.You can now login in one of the displayed forms"
+            logger.info(t_message)                            
+            return render_template("part1.html", message_v=t_message)       
+        else:
+                t_message = "Password mismatch"
+                logger.info(t_message)
+                return render_template("useradd.html", message_v=t_message, form = form)
+        
+        
+@app.route("/useradd_correct", methods=['POST'])
+def useradd_correct():
+    form = SignupForm()
+    app.config["OTP_ENABLED"] = "False"
     password = request.form['new_password']
     username = request.form['new_username']
     cpassword = request.form['confirmed_password']
@@ -122,35 +147,17 @@ def useradd():
     if  (any(re.search(r, username) for r in rexes)):
         # unsecure username
         t_message = "Insecure username. Please stop trying to hack this form!"
-        flash(t_message)
         logger.info(t_message)
-        return render_template("useradd.html",form = form)
+        return render_template("useradd.html",form = form, message_c=t_message)
+    
     username=sanitize(username,'pass')
     password=sanitize(password,'pass')
     cpassword=sanitize(cpassword,'pass')
     
-    #checks if the password and confirmed password are the same
-    if password != cpassword:
-        # password mismatch
-        t_message = "password mismatch"
-        flash(t_message)
-        logger.info(t_message)
-        return render_template("useradd.html",form = form)
-
-    #forçar passwords seguras
-    rexes = ('[A-Z]', '[a-z]', '[0-9]','@','!')
-    if not (len(password) >= 12 and all(re.search(r, password) for r in rexes)):
-        # unsecure password
-        t_message = "Unsecure password. Please choose one password with more than 12 symbols, including lower and upper case letters, numbers and one of the simbols @ or !."
-        flash(t_message)
-        logger.info(t_message)
-        return render_template("useradd.html",form = form)
-
-    # Here we catch and display any errors that occur whe accesing the DB
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e:
+    except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part1.html")
@@ -164,62 +171,72 @@ def useradd():
     if array_row is not None:
         # User exists
         t_message = "Existing user, " + username + ", please define a new username!"
-        flash(t_message)
         logger.info(t_message)
         conn.close ()
-        return render_template("useradd.html",form = form)
+        return render_template("useradd.html",form = form, message_c=t_message)
+    else:
+        if recaptcha.verify():
+            #Check if password is secure
+            rexes = ('[A-Z]', '[a-z]', '[0-9]','[@,!]')
+            if (len(password) >= 12 and all(re.search(r, password) for r in rexes)):
+                #checks if the password and confirmed password are the same
+                if password == cpassword:
 
-    #*********************bcrypt
-    salt = bcrypt.gensalt()
-    h_password = bcrypt.hashpw(password.encode('utf-8'),salt)   
-    sqlquery=('INSERT INTO users (username,password,salt) VALUES (%s,%s,%s)')
-    val=(username,h_password.decode('utf-8'),salt.decode('utf-8'))
-    cur.execute(sqlquery,val)
-    conn.commit ()
-    conn.close ()
-    logger.info(val)
-
-    t_message = "User "+username+" added with success."
-    flash(t_message)
-    logger.info(t_message)
-    #test only export users
-    #export_users()
-    return render_template("part1.html",form = form);
-
+                    logger.info(username)
+                    salt = bcrypt.gensalt()
+                    h_password = bcrypt.hashpw(password.encode('utf-8'),salt)  
+                    logger.info(h_password.decode('utf-8'))
+                    logger.info(salt.decode('utf-8'))
+                    otp=pyotp.random_base32()
+                    logger.info(otp)
+                    cur.execute("INSERT INTO users(username,password,salt,otp) VALUES ('" + username + "', '" + h_password.decode('utf-8') + "','"+salt.decode('utf-8')+"', '"+otp+"')")
+                    conn.commit ()
+                    conn.close ()
+                    
+                    t_message = "User "+username+" added with success. You can now login"
+                    logger.info(t_message)
+                    return  render_template("auth.html", secret_key=otp)
+                else:
+                    t_message = "Password mismatch"
+                    logger.info(t_message)
+                    return render_template("useradd.html", message_c=t_message,form = form)
+            else:
+                t_message = "Unsecure password. Please choose one password with more than 12 symbols, including lower and upper case letters, numbers and one of the simbols @ or !."
+                logger.info(t_message)
+                return render_template("useradd.html", message_c=t_message, form = form)
+        else:
+            t_message = "Incorrect CAPTCHA"
+            logger.info(t_message)
+            return render_template("useradd.html", message_c=t_message, form = form)
+                    
 
 @app.route("/approved.html", methods=['GET'])
 #@login_required
 def approved():
-    logger.info('----APPROVED-----')
+    logger.info('---- reached approved.html -----')
     #validação da sessão
-    try:
-        session['user_id']
-    except:
+    if not g.user:
         logger.info("Tentativa de aceder sem sessão iniciada!")
-        return render_template("index.html");
-
-
+        return render_template("index.html")
     logger.info(session)
-    #t_message='User: '+ session['user_id']
-    #flash(t_message) 
-    return render_template("approved.html");
+    return render_template("approved.html")
+    
 
 @app.route("/part1.html", methods=['GET'])
 def login():
-  
-
-    return render_template("part1.html");
-
+    logger.info("---- reached part1.html ----")
+    return render_template("part1.html")
+    
 
 @app.route("/part1_vulnerable", methods=['GET', 'POST'])
 def part1_vulnerable():
     logger.info("---- part1_vulnerable ----")
-
+    logger.info(g.user)
     if request.method == 'GET':
         password = request.args.get('v_password') 
         username = request.args.get('v_username') 
         remember = request.args.get('v_remember') 
-        #session['text'] = request.args.get('v_username') # isto pode ser comentado???
+        #session['text'] = request.args.get('v_username') 
     else:
         password = request.form['v_password']
         username = request.form['v_username']
@@ -237,7 +254,7 @@ def part1_vulnerable():
         return render_template("part1.html")
     
     #Query the DB unsecurely for the stored salt
-    sqlquery=("SELECT * FROM users WHERE username = '" + username +"'")
+    sqlquery=("SELECT * FROM users WHERE username = '" + username+"'" )
     logger.info(sqlquery) 
     cur.execute(sqlquery)
     array_row = cur.fetchone() #fetchall seria mais arriscado
@@ -246,18 +263,16 @@ def part1_vulnerable():
     if array_row is None:
         # User does not exist
         t_message = "User does not exist" #mensegem de erro insegura
-        flash(t_message)
+        #flash(t_message)
         logger.info(t_message)
         conn.close ()
-        return render_template("part1.html")
+        return render_template("part1.html", message_v=t_message)
 
-    #SHA512
-    # hpass_with_stored_salt=hashlib.sha512(array_row[2].encode() + password.encode()).hexdigest()
     #BCRYPT
     hpass_with_stored_salt=bcrypt.hashpw(password.encode('utf-8'),array_row[2].encode('utf-8'))
 
     #Query the DB unsecurely for the entry with salt and username
-    sqlquery=("SELECT * FROM users WHERE username = '" + username +"' AND password = '" + hpass_with_stored_salt.decode('utf-8') +"'")
+    sqlquery=("SELECT * FROM users WHERE username = '" + username +"' AND password = '" + hpass_with_stored_salt.decode('utf-8')+"'")
     logger.info(sqlquery) 
     cur.execute(sqlquery)
     array_row = cur.fetchone() #fetchall seria mais arriscado
@@ -266,52 +281,62 @@ def part1_vulnerable():
     if array_row is None:
         # User/pass are not correct
         t_message = "Password is not correct"
-        flash(t_message)
         logger.info(t_message)
-        return render_template("part1.html")
+        return render_template("part1.html", message_v =t_message)
 
-
+    username=array_row[0]
     #mensagem de sucesso da validação do user
     t_message = "You were successfully logged with the insecure form, user " + username
+    
     flash(t_message)
     logger.info(t_message)
 
-    #estabelecimento da sessão
+    #estabelecimento da sessao
     session['user_id'] = username
-    logger.info(session)
-    #next = request.args.get('next')
-    #user = User.query.filter_by(username=username).first()
-    #user = User.get(int(id))
-    #t_message='User: '+ session['user_id']
-    #flash(t_message) 
-    return render_template("approved.html")
+ 
+    if remember == "on":
+        app.config["SESSION_PERMANENT"]  = True
+    else:
+       app.config["SESSION_PERMANENT"] = False 
+  
+    return render_template("approved.html",user=session['user_id'])
 
    
 
 @app.route("/part1_correct", methods=['POST'])
-# method get is dangerous
+
 def part1_correct():
     logger.info("---- part1_correct ----")
+    logger.info(g.user)
 
-    password = request.form['c_password']
     username = request.form['c_username']
+    password = request.form['c_password']
+    otp=request.form['c_otp']
     remember = request.form['c_remember']
+    
+    logger.info(password)
+    logger.info(username)
+    logger.info(otp)
+    logger.info(remember)
 
+    session.pop('username', None)
+    logger.info(session)
     #sanitizacao de inputs
     rexes = (' OR ', ' AND ', '<', '>','\'','\"','--' )
     if  (any(re.search(r, username) for r in rexes)):
         # unsecure username
         t_message = "Unsecure username. Please stop trying to hack this form!"
-        flash(t_message)
+
         logger.info(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html", message_c = t_message)
+    
     #password validation is probably not needed!
     if  (any(re.search(r, password) for r in rexes)):
         # unsecure username
         t_message = "Unsecure password. Please stop trying to hack this form!"
-        flash(t_message)
+        #flash(t_message)
         logger.info(t_message)
-        return render_template("part1.html", message = t_message)
+        return render_template("part1.html", message_c = t_message)
     username=sanitize(username,'pass')
     password=sanitize(password,'pass')
     
@@ -321,64 +346,104 @@ def part1_correct():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e:
+    except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part1.html")
     
     #Query the DB and fetch the salt of the user
-    sqlquery=("SELECT * FROM users WHERE username = '{}'").format(username)
-    logger.info(sqlquery) 
-    cur.execute(sqlquery)
+
+    logger.info(("SELECT * FROM users WHERE username = '{}'").format(username)) 
+    cur.execute("SELECT * FROM users WHERE username = %(username)s", {'username': username})
     try: #maior protecção quanto a erros na query
         array_row = cur.fetchone() #fetchall seria mais arriscado
     except psycopg2.Error as e:
       t_error_message = "Database error: " + e + "/n SQL: " 
     conn.close ()
-
-    logger.info(array_row)
-    #logger.info(bcrypt.hashpw(password.encode('utf-8'),array_row[2].encode('utf-8')))
-    check = False
-    try:
-        check = bcrypt.checkpw(password.encode('utf-8'),array_row[1].encode('utf-8'))
-    except:
+ 
+    
+    if array_row is None:
         t_message = "You have entered an invalid username or password"
+        logger.info(t_message)
+        return render_template("part1.html", message_c=t_message)
+    else:    
+        check = bcrypt.checkpw(password.encode('utf-8'),array_row[1].encode('utf-8'))
+        logger.info(check)
+        if check:
+            #mensagem de sucesso da validação do user
+            t_message = "You were successfully logged with the secure form, user " + username
+            logger.info(t_message)
+
+            #OTP
+            #https://lorenzobn.github.io/how-to-implement-two-factor-authentication-web-application
+            otp_db=array_row[3] # otp do user
+            logger.info("Going for OTP authorization")
+            otp_instance = pyotp.TOTP(otp_db)
+            valid = otp_instance.verify(otp)
+            if valid:
+                #estabelecimento da sessao
+                session['user_id'] = username
+                
+                logger.info(remember)
+                if remember == "on":
+                    app.config["SESSION_PERMANENT"]   = True
+                else:
+                    app.config["SESSION_PERMANENT"]   = False
+                t_message = "You were successfully logged with the secure form as user " + session['user_id']
+                
+                logger.info(t_message)
+                flash(t_message)
+                return render_template("approved.html", user = session['user_id'])
+            else:
+                t_message="Invalid code. Please try again."
+                return render_template("part1.html", message_c=t_message)
+
+        
+        else:
+            t_message = "You have entered an invalid username or password"
+        
+            logger.info(t_message)
+            return render_template("part1.html", message_c=t_message)
+    return render_template("part1.html")
+
+@app.route("/auth.html", methods=['GET'])
+def OTP_auth():
+    
+    logger.info("auth")
+
+    if app.config["OTP_ENABLED"] == "True":
+        t_message =  "OTP already created"
+        return render_template("part1.html", message_c= t_message)
+           
+    else:
+        app.config["OTP_ENABLED"] = "True"
+        t_message =  "User registered. You can login" 
         flash(t_message)
         logger.info(t_message)
-        return render_template("part1.html")
-    
-    #mensagem de sucesso da validação do user
-    t_message = "You were successfully logged with the secure form, user " + username
-    flash(t_message)
-    logger.info(t_message)
-
-    #estabelecimento da sessão
-    '''este codigo não funciona porque???
-    if remember:
-        print(t_message)
-		response = make_response(redirect('index.html',500))
-        response.set_cookie('user_id', username, max_age=COOKIE_TIME_OUT)
-        return response
-    '''
-    session['user_id'] = username
-    logger.info(session)
-
-    return render_template("approved.html", message = t_message, user = session['user_id'])
-    
-
+        return render_template("part1.html", message_c= t_message)
+      
+  
 @app.route("/part2.html", methods=['GET'])
 #@login_required
 def part2():
-    logger.info("---- part2 ----")
+    logger.info("---- reached part2.html ----")
     logger.info(session)
 
-    try:
-        session['user_id']
-    except:
+    if not g.user:
         logger.info("Tentativa de aceder sem sessão iniciada!")
         return render_template("index.html")
-
-    return render_template("part2.html",user = session['user_id'])
+    else:
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM messages")
+            comments = cur.fetchall()
+            conn.close()
+        except conn.Error as e: 
+            t_message = "Database error: " + e + "/n SQL: "
+            logger.info(t_message)
+            return render_template("part2.html")
+    return render_template("part2.html",comments=comments, user = session['user_id'])
 
 
 @app.route("/part2_vulnerable", methods=['GET', 'POST'])
@@ -391,31 +456,27 @@ def part2_vulnerable():
     # Here we catch and display any errors that occur
     try:
         conn = get_db()
-        cur = conn.cursor()
+        cur = conn.cursor()   
     except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part1.html")
     
     #escrita na BD
-    sqlquery=("INSERT INTO messages (author,message) VALUES ('vulnerable','"+mensagem+"');COMMIT;")
+    sqlquery=("INSERT INTO messages (author,message) VALUES ('Vulnerable','"+mensagem+"');COMMIT;")
     logger.info(sqlquery) 
     cur.execute(sqlquery)
-    #leitura do ultimo elemento na BD
-    sqlquery=("SELECT * FROM messages WHERE message_id=(SELECT max(message_id) FROM messages)")
-    logger.info(sqlquery) 
-    cur.execute(sqlquery)
-    array_row = cur.fetchone() #fetchall seria mais arriscado
-    t_message=array_row[2]
-    logger.info(t_message) 
+    #leitura de todos os elementos da bd
+    cur.execute("SELECT * FROM messages")
+    comments = cur.fetchall()
     conn.close ()
-    flash(t_message)
-    return  render_template("part2.html", message = t_message, user = session['user_id'])
-    #return "/part2_vulnerable"
+    return  render_template("part2.html", comments=comments, user = session['user_id'])
+
 
 
 @app.route("/part2_correct", methods=['POST'])
 def part2_correct():
+    logger.info("part2_correct")
     mensagem = request.form['c_text']
 
     # Here we catch and display any errors that occur
@@ -425,7 +486,6 @@ def part2_correct():
     except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
-        flash(t_message)
         return render_template("part1.html")
     
     #sanitizacao
@@ -433,40 +493,36 @@ def part2_correct():
     mensagem = mensagem[:250] + ('..' if len(mensagem) > 250 else '')
     #escrita na BD
     sqlquery=('INSERT INTO messages (author,message) VALUES (%s,%s)')
-    val=('correct',mensagem)
+    val=('Correct',mensagem)
     try: #maior protecção quanto a erros na query
         cur.execute(sqlquery,val)
         conn.commit ()
     except psycopg2.Error as e:
         t_error_message = e
     #leitura do ultimo elemento na BD
-    sqlquery=("SELECT * FROM messages WHERE message_id=(SELECT max(message_id) FROM messages)")
-    logger.info(sqlquery) 
+
+    
+    sqlquery=("SELECT * FROM messages")
     try: #maior protecção quanto a erros na query
         cur.execute(sqlquery)
-        array_row = cur.fetchone()
+        comments = cur.fetchall()
+        sanitize(comments,'mensagem')
     except psycopg2.Error as e:
         t_error_message = e
-    
-    t_message=array_row[2]
-    logger.info(t_message) 
-    conn.close ()
-    flash(t_message)
-    
-    return  render_template("part2.html",  message = t_message, user = session['user_id'])
-    return "/part2_correct"
 
+    logger.info(comments) 
+    conn.close ()
+    return  render_template("part2.html",  comments=comments, user = session['user_id'])
+    
 
 @app.route("/part3.html", methods=['GET'])
 def part3():
-
+    logger.info("---- reached part3.html ----")
     #validação da sessão
-    try:
-        session['user_id']
-    except:
+    if not g.user:
         logger.info("Tentativa de aceder sem sessão iniciada!")
         return render_template("index.html")
-
+    logger.info(session)
     return render_template("part3.html",user = session['user_id'])
 
 
@@ -517,7 +573,7 @@ def part3_vulnerable():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: 
+    except conn.Error as e:
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part3.html")
@@ -600,32 +656,31 @@ def part3_vulnerable():
                " WHEN word LIKE '%"+search_input+"' THEN 4" +
                " ELSE 3 END")
         '''
+     
+    
+    #esconder o campo description
+    if  sp_m=='0':
+        logger.info("esconder campo description") 
+        hidedescription=True
+    else:
+        hidedescription=False 
+    
     #sp_start_day=sp_start_month=sp_start_year=sp_end_day=sp_end_month=sp_end_year='00'
-    logger.info(sqlquery)   
+    logger.info(sqlquery)  
     try:
         cur.execute(sqlquery)
-        array_row = cur.fetchmany(sp_c)
+        array_row = cur.fetchmany(sp_c) #limite de linhas
     except psycopg2.Error as e:
         t_error_message = e
         array_row = [None] 
 
   
-    #esconder o campo description - ainda nao funciona
-    if  sp_m=='0':
-        as_list = list(array_row)
-        logger.info("esconder campo description") 
-        #array_row.remove(6)
-        #for i in as_list: 
-            #i.pop(6) #AttributeError: 'tuple' object has no attribute 'pop'
-            #del i[6] #TypeError: 'tuple' object doesn't support item deletion
-            #i.remove(6) #AttributeError: 'tuple' object has no attribute 'remove'
-            #i.__delattr__('6')
-        #array_row=tuple(as_list) 
+    
 
     logger.info(array_row) 
     conn.close ()
     
-    return  render_template("part3.html", livros = array_row, user = session['user_id'])
+    return  render_template("part3.html", livros = array_row, user = session['user_id'], hidedescription=hidedescription)
     #return "/part3_vulnerable"
 
 
@@ -656,19 +711,19 @@ def part3_correct():
     try:
         conn = get_db()
         cur = conn.cursor()
-    except conn.Error as e: #isto nao esta bem?
+    except conn.Error as e: 
         t_message = "Database error: " + e + "/n SQL: "
         logger.info(t_message)
         return render_template("part3.html")
     
     #construcao da query
-    if search_input == '': #Search For vazio
+    if search_input == '': #Search For vazio, ou seja search simples
         logger.info("Search For vazio")
         sqlquery=("SELECT * FROM books" +
-        " WHERE (title LIKE '%" + title + "%'" +
-        " AND authors LIKE '%" + author + "%'" +
-        " AND category LIKE '%" + category + "%'" +
-        " AND (price BETWEEN '" + pricemin + "'AND '" + pricemax + "'))" )
+            " WHERE (title LIKE '%" + title + "%'" +
+            " AND authors LIKE '%" + author + "%'" +
+            " AND category LIKE '%" + category + "%'" +
+            " AND (price BETWEEN '" + pricemin + "'AND '" + pricemax + "'))" )
     else:
         if radio_match == 'phrase': #exact phrase
             if search_field =='any': #qualquer campo
@@ -744,29 +799,24 @@ def part3_correct():
         array_row = [None] 
 
   
-    #esconder o campo description - ainda nao funciona
+    #esconder o campo description
     if  sp_m=='0':
-        as_list = list(array_row)
         logger.info("esconder campo description") 
-        #array_row.remove(6)
-        #for i in as_list: 
-            #i.pop(6) #AttributeError: 'tuple' object has no attribute 'pop'
-            #del i[6] #TypeError: 'tuple' object doesn't support item deletion
-            #i.remove(6) #AttributeError: 'tuple' object has no attribute 'remove'
-            #i.__delattr__('6')
-        #array_row=tuple(as_list) 
+        hidedescription=True
+    else:
+        hidedescription=False 
 
     logger.info(array_row) 
     conn.close ()
 
-    return  render_template("part3.html", livros = array_row, user = session['user_id'])
+    return  render_template("part3.html", livros = array_row, user = session['user_id'], hidedescription=hidedescription)
 
     #return "/part3_correct"
 
 
 @app.route("/demo", methods=['GET', 'POST'])
 def demo():
-    logger.info("\n DEMO \n");   
+    logger.info("\n DEMO \n") 
 
     conn = get_db()
     cur = conn.cursor()
@@ -806,6 +856,7 @@ def sanitize(input,type):
     if type=='pass': output=re.sub(r"[^a-zA-Z0-9!@]","",input)
     elif type=='text': output=re.sub(r"[^a-zA-Z0-9 ]","",input)
     elif type=='number': output=re.sub(r"[^0-9]","",input)
+    elif type=='mensagem': output=input
     logger.info("sanitize output:")
     logger.info(output)
     return output
@@ -841,36 +892,6 @@ def export_db():
     conn.close ()
     logger.info("\n---------------------\n\n") 
     return
-
-def export_users():
-    conn = get_db()
-    cur = conn.cursor()
-
-    logger.info("---- users  ----")
-    cur.execute("SELECT * FROM users")
-    rows = cur.fetchall()
-
-    for row in rows:
-        logger.info(row)
-
-    conn.close ()
-    logger.info("\n---------------------\n\n") 
-    return
-
-def export_books():
-    conn = get_db()
-    cur = conn.cursor()
-
-    logger.info("---- books  ----")
-    cur.execute("SELECT * FROM books")
-    rows = cur.fetchall()
-
-    for row in rows:
-        logger.info(row)
-
-    conn.close ()
-    #logger.info("\n---------------------\n\n") 
-    return
     
 ##########################################################
 ## DATABASE ACCESS
@@ -899,11 +920,6 @@ def config(filename='Database.ini', section='postgresql'):
 def get_db():
     params = config()
     db = psycopg2.connect(**params)
-    #db = psycopg2.connect(user = "ddss-database-assignment-2",
-    #            password = "ddss-database-assignment-2",
-    #            host = "db",
-    #            port = "5432",
-    #            database = "ddss-database-assignment-2")
     return db
 
 
@@ -916,9 +932,6 @@ def get_db():
 if __name__ == "__main__":
     
     logging.basicConfig(filename="logs/log_file.log")
-    # If ran from the compiler we get a permission eror because the owner of the log is root
-    # PermissionError: [Errno 13] Permission denied: '/home/rpires/git/ddss2021-dominoro/python/app/logs/log_file.log'
-    # run the docker "web"
     logger = logging.getLogger('logger')
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
@@ -934,9 +947,8 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     #logger.info("\n---------------------\n\n")
-
+    
     app.run(host="0.0.0.0", debug=False, threaded=True)
-
 
 
 

@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+{% block body %}
+  <div class="row" id="title">
+    <h1>Connection to Google Authenticator</h1>
+  </div>
+  <div class="row">
+    {% if secret_key %}
+    <div class="six columns">
+      <form action="/auth.html" method="GET">
+        <div class="row">
+          <ul>
+            <li>Open Google Authenticator</li>
+            <li>Tap on the + button</li>
+            <li>Then tap on 'Enter a setup key'</li>
+            <li>Type the text written below into the file 'Your key'</li>
+            <li>Click Add</li>
+          </ul>
+        </div>
+        <div class="row">
+          <div class="ten columns">
+            <input class="u-full-width" type="text" value="{{ secret_key }}" readonly>
+          </div>
+          {% if qr_code %}     
+            <div class="image">{{qr_code }}</div>
+          {% endif %}
+
+        </div>
+
+
+        <div class="row">
+          <div class="three columns">
+            <input class="button-primary" type="submit" value="Done">
+          </div>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+    {% if message_c %}
+        <div class="messages">{{ message_c }}</div>
+    {% endif %}  
+    
+</div>
+
+{% endblock %}
