@@ -2,7 +2,7 @@
 # Authors: Nuno Antunes <nmsa@dei.uc.pt>, João Antunes <jcfa@dei.uc.pt>
 #
 
-from python:3.8-alpine
+from python:3.13.0a4-alpine
 
 RUN apk update && apk add postgresql-dev gcc python3-dev musl-dev
 
